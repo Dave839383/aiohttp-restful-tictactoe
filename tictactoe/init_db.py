@@ -2,7 +2,7 @@
 from sqlalchemy import create_engine, MetaData
 
 from tictactoe.settings import config
-from tictactoe.db import game, player
+from tictactoe.db import game, player, gameplayerinformation, moves
 from tictactoe.db import init_pg
 
 
@@ -10,7 +10,7 @@ DSN = "postgresql://{name}}:{password}@localhost:5432/{dbname}"
 
 def create_tables(engine):
     meta = MetaData()
-    meta.create_all(bind=engine, tables=[game, player])
+    meta.create_all(bind=engine, tables=[game, player, gameplayerinformation, moves])
 
 '''
 def sample_data(engine):
