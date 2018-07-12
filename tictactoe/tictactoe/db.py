@@ -46,7 +46,7 @@ gameplayerinformation= Table(
 
     Column('id', Integer, primary_key=True),
     Column('score', String(200), nullable=False),
-
+    Column('move_type', String(10), nullable=False),
     Column('game_id',
            Integer,
            ForeignKey('game.id', ondelete='CASCADE'))
