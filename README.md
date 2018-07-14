@@ -41,9 +41,9 @@ make a POST request to ```/game/{game_name}/player/{player_name}/move```. Send:
 ```
 Each square needs to be a number from 1 to 9, with each number representing a square in the following grid:
 
-1 2 3
-4 5 6
-7 8 9
+1 2 3\
+4 5 6\
+7 8 9\
 
 ### PLAYING A FULL GAME WITH THE REQUESTS LIBRARY
 ```
