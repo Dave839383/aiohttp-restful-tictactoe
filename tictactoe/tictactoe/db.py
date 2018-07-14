@@ -12,6 +12,7 @@ game = Table(
 
     Column('name', String(200), primary_key=True),
     Column('status', String(200)),
+    Column('next_turn', String(200)),
 )
 
 # store a history of all moves in all games here,
@@ -20,7 +21,7 @@ moves = Table(
     'moves', meta,
 
     Column('id', Integer, primary_key=True),
-    Column('square', String(200)),
+    Column('square', Integer),
     Column('move_type', String(10)),
     Column('game_name',
            String(200),

@@ -1,6 +1,7 @@
 from aiohttp import web
 from psycopg2 import IntegrityError
 from sqlalchemy import and_
+from itertools import combinations
 import db
 
 
@@ -109,6 +110,11 @@ async def add_player_to_game(request):
                             db.game.update().where(
                                 db.game.c.name==game_name).values(status='IN PROGRESS'))
 
+                        # update whose turn it is
+                        await conn.execute(
+                            db.game.update().where(
+                                db.game.c.name==game_name).values(next_turn=player_name))
+
 
                 return web.Response(
                     text='new player: '+ player_name + ' has been added to game: '+ game_name + ' and is using '+ move_type)
@@ -128,6 +134,15 @@ async def add_player_to_game(request):
 
 # /game/{game_name}/player/{player_name}/move
 async def make_move(request):
+    # https://stackoverflow.com/questions/2670217/detect-winning-game-in-nought-and-crosses
+    # algorithm for finding winner assigns numbers to each square
+    # so that all rows diagonals etc add to 15, if same X or O in any of 
+    # these given rows or diagonals then we have a winner
+    # User still enters numbers 1 to 9 for squares left to right,
+    # top to bottom though so it isn't confusing for them
+    # An index in this list is the user square, the number stored
+    # at that index is the square used for calculating the winnder
+    square_list = [4,3,8,9,5,1,2,7,6]
 
     game_name = request.match_info['game_name']
     player_name = request.match_info['player_name']
@@ -160,7 +175,7 @@ async def make_move(request):
 
         result = await cursor.fetchone()
         game_status = result['status']
-        print(game_status != 'IN PROGRESS')
+        next_turn = result['next_turn']
 
         if game_status != 'IN PROGRESS':
             raise web.HTTPBadRequest(
@@ -169,16 +184,59 @@ async def make_move(request):
         # the player must be playing in this game
         cursor = await conn.execute(
                         db.gameplayerinformation.select().where(and_(
-                            db.gameplayerinformation.c.game_name==game_name, db.gameplayerinformation.c.player_name==player_name)))
-        games = await cursor.fetchall()
+                            db.gameplayerinformation.c.game_name==game_name, 
+                            db.gameplayerinformation.c.player_name==player_name)))
+        current_game = await cursor.fetchall()
         games_row_count = cursor.rowcount
-        print(games_row_count)
 
         if games_row_count == 0:
             raise web.HTTPBadRequest(
                 text='Player with name '+ player_name + ' is not playing this game')
-        # cant move to same square twice
         
+        # check if it's this players turn
+        '''
+        if next_turn != player_name:
+            raise web.HTTPBadRequest(
+                text='It is not this players turn')
+        '''
+        # cant move to same square twice
+        cursor = await conn.execute(
+                        db.moves.select().where(and_
+                            (db.moves.c.square==move_square,
+                             db.moves.c.game_name==game_name)))
+        square_row_count = cursor.rowcount
+
+        if square_row_count > 0:
+            raise web.HTTPBadRequest(
+                text='Square '+ str(move_square) + ' has already been used')
+
+        # insert the new move
+        # square, move_type, game_name, player_name
+        await conn.execute(
+            db.moves.insert().values(
+                square=move_square, move_type=current_game[0][1],
+                game_name=game_name, player_name=player_name))
+
+        # determine if there is a winner or all squares are filled
+        # start by getting all the moves of the current player
+        cursor = await conn.execute(
+            db.moves.select().where(
+                db.moves.c.player_name==player_name))
+
+        player_moves = await cursor.fetchall()
+        player_squares_list = [i[1] for i in player_moves]
+        squares_for_sum = [square_list[i - 1] for i in player_squares_list]
+
+        # check if a combination of squares add to 15
+        awinner = subset_sum(squares_for_sum, 15)
+
+        # update game status to FINISHED
+        if awinner:
+            await conn.execute(db.game.update().where(
+                                db.game.c.name==game_name).values(
+                                status='FINISHED'))
+            return web.Response(text=
+                'Congratulations '+ player_name+'.  You won the game.')
 
     return web.Response(text='making a move')
 
@@ -200,4 +258,7 @@ def RepresentsInt(s):
     except ValueError:
         return False
 
-
+# https://stackoverflow.com/questions/23501347/
+# check-if-there-are-three-numbers-in-the-list-that-add-up-to-target
+def subset_sum(lst, target):
+    return len(lst) > 2 and any(sum(x) == target for x in combinations(lst, 3))
