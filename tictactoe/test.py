@@ -32,7 +32,7 @@ async def test_game_with_no_name_throws_error(cli, tables_and_data):
     assert await resp.text() == 'You have not specified a game name'
 
 
-async def test_player_same_player_not_allowed_to_game_twice(cli, tables_and_data):
+async def test_player_same_player_not_allowed_in_a_game_twice(cli, tables_and_data):
     resp = await cli.post('/game', data={'name':'anewgame'})
     assert resp.status == 200
     resp = await cli.post('/game/anewgame/player', data={'player_name':'John'})
@@ -41,7 +41,7 @@ async def test_player_same_player_not_allowed_to_game_twice(cli, tables_and_data
     assert await resp.text() == 'the game must have two different players'
 
 
-async def test_player_only_allowed_two_players(cli, tables_and_data):
+async def test_player_only_allowed_two_players_in_a_game(cli, tables_and_data):
     resp = await cli.post('/game', data={'name':'newgame'})
     assert resp.status == 200
     resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
@@ -66,6 +66,49 @@ async def test_player_first_crosses_second_noughts(cli, tables_and_data):
     assert await resp.text() == 'new player: Dave has been added to game: newgametwoplayers and is using crosses'
     resp = await cli.post('/game/newgametwoplayers/player', data={'player_name':'John'})
     assert await resp.text() == 'new player: John has been added to game: newgametwoplayers and is using noughts'
+
+
+async def test_move_square_must_be_a_number(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'ioa'})
+    assert resp.status == 400
+    assert await resp.text() == 'square must be a number'
+
+
+async def test_move_square_cant_be_less_than_1(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'-1'})
+    assert resp.status == 400
+    assert await resp.text() == 'square must be between 1 and 9'
+
+
+async def test_move_square_cant_be_greater_than_9(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'11'})
+    assert resp.status == 400
+    assert await resp.text() == 'square must be between 1 and 9'
+
+async def test_move_player_must_be_a_participant_of_the_game(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Jason'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/John/move', data={'square':'1'})
+    assert resp.status == 400
+    assert await resp.text() == 'Player with name John is not playing this game'
+
+
 
 
 
