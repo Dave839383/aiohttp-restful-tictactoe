@@ -1,9 +1,6 @@
 import pytest
 from tictactoe.main import init_app
-from init_db import (
-    create_tables,
-    sample_data,
-)
+from init_db import setup
 
 
 @pytest.fixture
@@ -14,5 +11,6 @@ async def cli(loop, test_client):
 
 @pytest.fixture
 def tables_and_data():
-    create_tables()
-    sample_data()
+    #create_tables()
+    #sample_data()
+    setup()

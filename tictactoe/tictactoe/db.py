@@ -42,8 +42,7 @@ player = Table(
 gameplayerinformation = Table(
     'gameplayerinformation', meta,
 
-    Column('id', Integer, primary_key=True),
-    Column('score', String(200), nullable=False),
+    Column('id', Integer, primary_key=True, autoincrement=True),
     Column('move_type', String(10), nullable=False),
     Column('game_name',
            String(200),
