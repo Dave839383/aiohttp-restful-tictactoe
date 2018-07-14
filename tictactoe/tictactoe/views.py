@@ -44,7 +44,7 @@ async def add_player_to_game(request):
         if request.method == 'GET':
 
             # select all the players in game_name
-            s = db.gameplayerinformation.select().where(db.player.c.name 
+            s = db.gameplayerinformation.select().where(db.player.c.name
                                                         == game_name)
             async with request.app['db'].acquire() as conn:
                 cursor = await conn.execute(s)
@@ -60,14 +60,16 @@ async def add_player_to_game(request):
 
             async with request.app['db'].acquire() as conn:
                 # get the number of players in the game already
-                cursor = await conn.execute(db.gameplayerinformation.select().where(
+                cursor = await conn.execute(
+                    db.gameplayerinformation.select().where(
                     db.gameplayerinformation.c.game_name == game_name))
                 get_players = await cursor.fetchone()
                 num_players = cursor.rowcount
 
                 # tic tac toe can only have 2 players
                 if num_players >= 2:
-                    raise web.HTTPBadRequest(text='this game already has 2 players')
+                    raise web.HTTPBadRequest(text=
+                        'this game already has 2 players')
 
                 # check if player has been added to player table
                 # if not we'll add it
@@ -87,13 +89,21 @@ async def add_player_to_game(request):
                             game_name=game_name,
                             player_name=player_name))
                     move_type = 'crosses'
+
+                    # this player will start the game so make it
+                    # their turn
+                    await conn.execute(
+                        db.game.update().where(
+                            db.game.c.name==game_name).values(
+                            next_turn=player_name))
                 # if we're here num_players must be 1 
                 else:
                     # we cannot add the same player to the same game
                     current_player = get_players['player_name']
 
                     if (player_name == current_player):
-                        raise web.HTTPBadRequest(text='the game must have two different players')
+                        raise web.HTTPBadRequest(text=
+                            'the game must have two different players')
 
                     else:
                         await conn.execute(
@@ -108,16 +118,13 @@ async def add_player_to_game(request):
                         # can start making moves.
                         await conn.execute(
                             db.game.update().where(
-                                db.game.c.name==game_name).values(status='IN PROGRESS'))
-
-                        # update whose turn it is
-                        await conn.execute(
-                            db.game.update().where(
-                                db.game.c.name==game_name).values(next_turn=player_name))
+                                db.game.c.name==game_name).values(
+                                status='IN PROGRESS'))
 
 
                 return web.Response(
-                    text='new player: '+ player_name + ' has been added to game: '+ game_name + ' and is using '+ move_type)
+                    text=
+                    'new player: '+ player_name + ' has been added to game: '+ game_name + ' and is using '+ move_type)
 
     except (KeyError, TypeError, ValueError) as e:
         print(e)
@@ -127,7 +134,8 @@ async def add_player_to_game(request):
     except(IntegrityError) as e:
         print(e)
         raise web.HTTPNotAcceptable(
-            text="The game does not exist or the player POST data is incorrect")
+            text=
+            "The game does not exist or the player POST data is incorrect")
     
     return web.Response(text='Wrong request type')
 
@@ -163,12 +171,14 @@ async def make_move(request):
         raise web.HTTPBadRequest(text='square must be a number')
 
     move_square = int(move_square)
+
     if move_square < 1 or move_square > 9:
         raise web.HTTPBadRequest(text='square must be between 1 and 9')
 
-    # game must be IN PROGRESS
-    # this is initially set in the add_player_to_game view
     async with request.app['db'].acquire() as conn:
+        # game must be IN PROGRESS
+        # this is initially set in the add_player_to_game view
+
         cursor = await conn.execute(
                         db.game.select().where(
                             db.game.c.name==game_name))
@@ -183,50 +193,44 @@ async def make_move(request):
 
         # the player must be playing in this game
         cursor = await conn.execute(
-                        db.gameplayerinformation.select().where(and_(
-                            db.gameplayerinformation.c.game_name==game_name, 
-                            db.gameplayerinformation.c.player_name==player_name)))
+                        db.gameplayerinformation.select().where(
+                            db.gameplayerinformation.c.game_name==game_name))
         current_game = await cursor.fetchall()
-        games_row_count = cursor.rowcount
+        participants = [i[3] for i in current_game]
 
-        if games_row_count == 0:
+        if not(player_name in participants):
             raise web.HTTPBadRequest(
                 text='Player with name '+ player_name + ' is not playing this game')
         
         # check if it's this players turn
-        '''
         if next_turn != player_name:
             raise web.HTTPBadRequest(
                 text='It is not this players turn')
-        '''
+
         # cant move to same square twice
         cursor = await conn.execute(
-                        db.moves.select().where(and_
-                            (db.moves.c.square==move_square,
-                             db.moves.c.game_name==game_name)))
-        square_row_count = cursor.rowcount
+                        db.moves.select().where(
+                             db.moves.c.game_name==game_name))
 
-        if square_row_count > 0:
+        all_moves = await cursor.fetchall()
+        all_squares = [i[1] for i in all_moves]
+
+        if move_square in all_squares:
             raise web.HTTPBadRequest(
                 text='Square '+ str(move_square) + ' has already been used')
 
         # insert the new move
-        # square, move_type, game_name, player_name
         await conn.execute(
             db.moves.insert().values(
                 square=move_square, move_type=current_game[0][1],
                 game_name=game_name, player_name=player_name))
 
         # determine if there is a winner or all squares are filled
-        # start by getting all the moves of the current player
-        cursor = await conn.execute(
-            db.moves.select().where(
-                db.moves.c.player_name==player_name))
-
-        player_moves = await cursor.fetchall()
-        player_squares_list = [i[1] for i in player_moves]
+        # this gets all moves by the current player
+        player_squares_list = [i[1] for i in all_moves if i[4] == player_name] 
+        # add current move to the list
+        player_squares_list.append(move_square)
         squares_for_sum = [square_list[i - 1] for i in player_squares_list]
-
         # check if a combination of squares add to 15
         awinner = subset_sum(squares_for_sum, 15)
 
@@ -238,10 +242,27 @@ async def make_move(request):
             return web.Response(text=
                 'Congratulations '+ player_name+'.  You won the game.')
 
-    return web.Response(text='making a move')
+        # check if all squares have been filled
+        # update status to FINISHED - NO WINNER
+        if len(all_moves)+1 == 9:
+            await conn.execute(db.game.update().where(
+                                db.game.c.name==game_name).values(
+                                status='FINISHED - NO WINNER'))
+            return web.Response(text=
+                'Game Over: No Winner, all squares filled')
+
+        # if no winner and game is still going update whose turn it is
+        next_player = [i for i in participants if i != player_name][0]
+
+        await conn.execute(db.game.update().where(
+                            db.game.c.name==game_name).values(
+                            next_turn=next_player))
+
+    return web.Response(text=player_name +' moved an '+current_game[0][1]
+     + ' to square '+ str(move_square))
 
 
-# /game/{game_name}/show
+# /game/{game_name}/show 
 async def show_game_board(request):
     # SELECT * FROM moves WHERE game_id = game_id
     return web.Response(text='Showing game board')
@@ -249,6 +270,8 @@ async def show_game_board(request):
 
 async def show_or_insert_players(request):
     return web.Response(text='Showing or insert players')
+
+############ HELPFER FUNCTIONS ############
 
 # helper function for determining if string is an int
 def RepresentsInt(s):
@@ -262,3 +285,4 @@ def RepresentsInt(s):
 # check-if-there-are-three-numbers-in-the-list-that-add-up-to-target
 def subset_sum(lst, target):
     return len(lst) > 2 and any(sum(x) == target for x in combinations(lst, 3))
+

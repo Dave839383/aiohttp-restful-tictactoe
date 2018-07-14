@@ -115,9 +115,9 @@ async def test_move_player_must_be_a_participant_of_the_game(cli, tables_and_dat
     assert resp.status == 200
     resp = await cli.post('/game/newgame/player', data={'player_name':'Jason'})
     assert resp.status == 200
-    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'1'})
-    assert resp.status == 200
     resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'1'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'1'})
     assert resp.status == 400
     assert await resp.text() == 'Square 1 has already been used'
 
@@ -128,15 +128,53 @@ async def test_a_player_wins_with_diagonal_15(cli, tables_and_data):
     assert resp.status == 200
     resp = await cli.post('/game/newgame/player', data={'player_name':'Jason'})
     assert resp.status == 200
-    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'1'})
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'1'})
     assert resp.status == 200
-    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'2'})
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'2'})
     assert resp.status == 200
-    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'5'})
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'5'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'3'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'9'})
+    assert resp.status == 200
+    assert await resp.text() == 'Congratulations Dave.  You won the game.'
+
+async def test_moves_no_player_wins_all_squares_filled(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Jason'})
     assert resp.status == 200
     resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'3'})
     assert resp.status == 200
-    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'9'})
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'1'})
     assert resp.status == 200
-    assert await resp.text() == 'Congratulations Jason.  You won the game.'
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'4'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'2'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'5'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'6'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'8'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'7'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'9'})
+    assert await resp.text() == 'Game Over: No Winner, all squares filled'
+
+async def test_move_not_this_players_turn(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Jason'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'1'})
+    assert resp.status == 400
+    assert await resp.text() == 'It is not this players turn'
+
 
