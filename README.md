@@ -37,7 +37,7 @@ The first player to be added to a game is automatically assigned crosses.
 #### make a move in the game
 make a POST request to ```/game/{game_name}/player/{player_name}/move```. Send:
 ```
-{ 'square' : 1 }
+{ 'square' : <a_number> }
 ```
 Each player needs to select a square to make a move to from 1 to 9
 
@@ -45,22 +45,31 @@ Each player needs to select a square to make a move to from 1 to 9
 ```
 >>> requests.post('http://localhost/game', {'name': 'anewgame'}).text
 'New Game: anewgame has been created'
+
 >>> requests.post('http://localhost/game/anewgame/player', {'player_name': 'Dave'}).text
 'new player: Dave has been added to game: anewgame and is using crosses'
+
 >>> requests.post('http://localhost/game/anewgame/player', {'player_name': 'John'}).text
 'new player: John has been added to game: anewgame and is using noughts'
+
 >>> requests.post('http:/localhost/game/anewgame/player/Dave/move', {'square': '1'}).text
 'Dave moved an X to square 1'
+
 >>> requests.post('http://localhost/game/anewgame/player/Jason/move', {'square': '2'}).text
 'Player with name Jason is not playing this game'
+
 >>> requests.post('http://localhost/game/anewgame/player/John/move', {'square': '2'}).text
 'John moved an O to square 2'
+
 >>> requests.post('http://localhost/game/anewgame/player/Dave/move', {'square': '1'}).text
 'Square 1 has already been used'
+
 >>> requests.post('http://localhost/game/anewgame/player/Dave/move', {'square': '5'}).text
 'Dave moved an X to square 5'
+
 >>> requests.post('http://localhost/game/anewgame/player/John/move', {'square': '3'}).text
 'John moved an O to square 3'
+
 >>> requests.post('http://localhost/game/anewgame/player/Dave/move', {'square': '9'}).text
 'Congratulations Dave.  You won the game.'
 ```
