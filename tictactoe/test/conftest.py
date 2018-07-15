@@ -1,7 +1,9 @@
-import pytest
-from tictactoe.main import init_app
-from init_db import setup
+import os, sys
+sys.path.append('tictactoe')
 
+import pytest
+from main import init_app
+from init_db import setup
 
 @pytest.fixture
 async def cli(loop, test_client):

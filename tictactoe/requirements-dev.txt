@@ -1,0 +1,7 @@
+# to run
+aiohttp
+aiopg
+
+# For testing
+pytest
+pytest-aiohttp

@@ -19,7 +19,7 @@ def setup_routes(app):
                         make_move, name='make_move')
 
     # GET: shows the game current game board
-    app.router.add_get('/game/{game_name}/show', show_game_board,
+    app.router.add_get('/game/{game_name}/board', show_game_board,
                        name='show_game_board')
 
     # GET: shows all players

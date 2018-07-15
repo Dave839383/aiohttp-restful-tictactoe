@@ -6,7 +6,6 @@ from init_db import (
     sample_data,
 )
 
-
 async def test_get_homepage(cli, tables_and_data):
     resp = await cli.get('/')
     assert resp.status == 200
@@ -177,4 +176,36 @@ async def test_move_not_this_players_turn(cli, tables_and_data):
     assert resp.status == 400
     assert await resp.text() == 'It is not this players turn'
 
+async def test_check_game_board_is_correct_after_four_moves(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Jason'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'1'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'2'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'3'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'5'})
+    assert resp.status == 200
+    resp = await cli.get('/game/newgame/board')
+    assert resp.status == 200
+    assert await resp.text() == '\nX O X \n  O   \n      \n'
+
+async def test_three_correct_moves_have_correct_response(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'newgame'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Dave'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player', data={'player_name':'Jason'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'1'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Jason/move', data={'square':'4'})
+    assert resp.status == 200
+    resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'8'})
+    assert resp.status == 200
 

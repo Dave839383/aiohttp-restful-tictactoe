@@ -166,7 +166,7 @@ async def make_move(request):
         raise web.HTTPBadRequest(
             text='You have not requested a square correctly') from e
     
-    # next two checks make sure square value is valid
+    # next two if statements make sure square value is valid
     if not(RepresentsInt(move_square)):
         raise web.HTTPBadRequest(text='square must be a number')
 
@@ -178,7 +178,6 @@ async def make_move(request):
     async with request.app['db'].acquire() as conn:
         # game must be IN PROGRESS
         # this is initially set in the add_player_to_game view
-
         cursor = await conn.execute(
                         db.game.select().where(
                             db.game.c.name==game_name))
@@ -196,6 +195,7 @@ async def make_move(request):
                         db.gameplayerinformation.select().where(
                             db.gameplayerinformation.c.game_name==game_name))
         current_game = await cursor.fetchall()
+        move_type = [i[1] for i in current_game if i[3] == player_name][0]
         participants = [i[3] for i in current_game]
 
         if not(player_name in participants):
@@ -222,7 +222,7 @@ async def make_move(request):
         # insert the new move
         await conn.execute(
             db.moves.insert().values(
-                square=move_square, move_type=current_game[0][1],
+                square=move_square, move_type=move_type,
                 game_name=game_name, player_name=player_name))
 
         # determine if there is a winner or all squares are filled
@@ -258,20 +258,39 @@ async def make_move(request):
                             db.game.c.name==game_name).values(
                             next_turn=next_player))
 
-    return web.Response(text=player_name +' moved an '+current_game[0][1]
+    return web.Response(text=player_name +' moved an '+move_type
      + ' to square '+ str(move_square))
 
 
 # /game/{game_name}/show 
 async def show_game_board(request):
-    # SELECT * FROM moves WHERE game_id = game_id
-    return web.Response(text='Showing game board')
+    game_name = request.match_info['game_name']
+
+    async with request.app['db'].acquire() as conn:
+        cursor = await conn.execute(
+                            db.moves.select().where(
+                                 db.moves.c.game_name==game_name))
+        all_moves = await cursor.fetchall()
+
+        moves_dict = {i[1] : i[2] for i in all_moves}
+        moves_str = '\n'
+        for i in range(1, 10):
+            if i in moves_dict:
+                moves_str += (moves_dict[i] + ' ')
+            else:
+                moves_str += '  '
+            if i % 3 == 0:
+                moves_str += '\n'
+
+    return web.Response(text=moves_str)
 
 
 async def show_or_insert_players(request):
     return web.Response(text='Showing or insert players')
 
+
 ############ HELPFER FUNCTIONS ############
+
 
 # helper function for determining if string is an int
 def RepresentsInt(s):
@@ -280,6 +299,7 @@ def RepresentsInt(s):
         return True
     except ValueError:
         return False
+
 
 # https://stackoverflow.com/questions/23501347/
 # check-if-there-are-three-numbers-in-the-list-that-add-up-to-target
