@@ -209,3 +209,38 @@ async def test_three_correct_moves_have_correct_response(cli, tables_and_data):
     resp = await cli.post('/game/newgame/player/Dave/move', data={'square':'8'})
     assert resp.status == 200
 
+async def test_add_a_new_player_to_db(cli, tables_and_data):
+    resp = await cli.post('/player', data={'player_name':'Susan'})
+    assert resp.status == 200
+    assert await resp.text() == 'Player: Susan was successfully added.'
+
+async def test_duplicate_players_cannot_be_added(cli, tables_and_data):
+    resp = await cli.post('/player', data={'player_name':'Susan'})
+    assert resp.status == 200
+    resp = await cli.post('/player', data={'player_name':'Susan'})
+    assert resp.status == 400
+    assert await resp.text() == 'A player with name Susan has already been added'
+
+async def test_get_all_players_returns_correct_players(cli, tables_and_data):
+    resp = await cli.post('/player', data={'player_name':'Susan'})
+    assert resp.status == 200
+    resp = await cli.post('/player', data={'player_name':'Fred'})
+    assert resp.status == 200
+    resp = await cli.post('/player', data={'player_name':'Jeff'})
+    assert resp.status == 200
+    resp = await cli.get('/player')
+    assert resp.status == 200
+    assert await resp.text() == 'players are: [\'Susan\', \'Fred\', \'Jeff\']'
+
+async def test_get_all_games_returns_correct_games(cli, tables_and_data):
+    resp = await cli.post('/game', data={'name':'game1'})
+    assert resp.status == 200
+    resp = await cli.post('/game', data={'name':'game2'})
+    assert resp.status == 200
+    resp = await cli.post('/game', data={'name':'game3'})
+    assert resp.status == 200
+    resp = await cli.get('/game')
+    assert resp.status == 200
+    assert await resp.text() == 'Games are: [(\'game1\', \'NEW\'), (\'game2\', \'NEW\'), (\'game3\', \'NEW\')]'
+
+

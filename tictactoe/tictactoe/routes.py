@@ -8,13 +8,12 @@ def setup_routes(app):
     # POST: post { 'new_game': <name> } to create game.
     app.router.add_view('/game', game, name='game')
 
-    # GET : 'get players in game'
-    # POST : { 'player_name': <name> } to create player.
+    # POST : { 'player_name': <name> } to create player for the game
     app.router.add_view('/game/{game_name}/player', add_player_to_game,
                         name='add_player_to_game')
 
     # POST : { 'square': <square_number> } square
-    # number is a number from 1 to 9.
+    # sqaure is a number from 1 to 9.
     app.router.add_post('/game/{game_name}/player/{player_name}/move',
                         make_move, name='make_move')
 
@@ -24,5 +23,5 @@ def setup_routes(app):
 
     # GET: shows all players
     # POST: { 'player_name': <name> } to create player.
-    app.router.add_get('/player', show_or_insert_players,
+    app.router.add_view('/player', show_or_insert_players,
                        name='show_or_insert_players')

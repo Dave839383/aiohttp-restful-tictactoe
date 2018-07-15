@@ -10,26 +10,38 @@ async def index(request):
     return web.Response(text='Lets play tic tac toe')
 
 
-# inserts a new game into the game table
-# throws IntegrityError if game already exists with this name
 async def game(request):
 
-    data = await request.post()
-    try:
-        game_name = data['name']
-
+    if request.method == 'GET':
         async with request.app['db'].acquire() as conn:
-            await conn.execute(db.game.insert().values(name=game_name, 
-                                                        status='NEW'))
-        
-    except (KeyError, TypeError, ValueError) as e:
-        raise web.HTTPBadRequest(
-            text='You have not specified a game name') from e
-    except(IntegrityError):
-        raise web.HTTPNotAcceptable(
-            text="a game called "+ game_name+ " already exists.")
+            # GET all games and display gamename and status
+            cursor = await conn.execute(db.game.select())
+            records = await cursor.fetchall()
+            games = str([(i[0], i[1]) for i in records])
+            print('records ', records)
+            return web.Response(text='Games are: '+ games)
 
-    return web.Response(text='New Game: '+game_name+' has been created')
+    elif request.method == 'POST':    
+        try:
+            # inserts a new game into the game table
+            # throws IntegrityError if game already exists with this name
+            data = await request.post()
+            game_name = data['name']
+
+            async with request.app['db'].acquire() as conn:
+                await conn.execute(db.game.insert().values(name=game_name, 
+                                                            status='NEW'))
+            
+        except (KeyError, TypeError, ValueError) as e:
+            raise web.HTTPBadRequest(
+                text='You have not specified a game name') from e
+        except(IntegrityError):
+            raise web.HTTPNotAcceptable(
+                text="a game called "+ game_name+ " already exists.")
+
+        return web.Response(text='New Game: '+game_name+' has been created')
+
+    return web.HTTPBadRequest(text='bad request type')
 
 
 # /game/{game_name}/player
@@ -286,7 +298,45 @@ async def show_game_board(request):
 
 
 async def show_or_insert_players(request):
-    return web.Response(text='Showing or insert players')
+    # show all players
+    if request.method == 'GET':
+        async with request.app['db'].acquire() as conn:
+            s = db.player.select()
+            cursor = await conn.execute(s)
+            records = await cursor.fetchall()
+            players = str([i[0] for i in records])
+            return web.Response(text='players are: '+ players)
+
+    elif request.method == 'POST':
+        data = await request.post()
+
+        try:
+            player_name = data['player_name']
+
+        except (KeyError, TypeError, ValueError) as e:
+            print(e)
+            raise web.HTTPBadRequest(
+                text='You have not requested a player correctly') from e
+        # check if player has been added to player table
+        # if not we'll add it
+        async with request.app['db'].acquire() as conn:
+            s = db.player.select().where(db.player.c.name == player_name)
+            cursor = await conn.execute(s)
+            row_count = cursor.rowcount
+
+            # add player to player table if it doesn't exist
+            if row_count is 0:
+                await conn.execute(db.player.insert().values(
+                    name=player_name))    
+            else:
+                raise web.HTTPBadRequest(
+                    text='A player with name '+ 
+                    player_name + ' has already been added')
+
+            return web.Response(text='Player: '+ player_name + 
+                ' was successfully added.')
+
+    return web.Response(text='player')
 
 
 ############ HELPFER FUNCTIONS ############
