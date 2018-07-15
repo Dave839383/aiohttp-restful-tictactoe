@@ -8,7 +8,7 @@ from tictactoe.db import game, player, gameplayerinformation, moves
 from tictactoe.db import init_pg
 
 
-DSN = "postgresql://davidlloyd:aiohttpdemo_pass@localhost:5432/aiohttp_rest_tictactoe"
+DSN = "postgresql://user:password@localhost:5432/aiohttp_rest_tictactoe"
 
 
 def create_tables(engine):
